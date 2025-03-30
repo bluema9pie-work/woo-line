@@ -153,32 +153,6 @@ class Woo_Line_Settings {
             <li><?php _e('已將 Bot 加入目標群組', 'woo-line-notification'); ?></li>
             <li><?php _e('在群組中發送一則訊息', 'woo-line-notification'); ?></li>
         </ol>
-        <script type="text/javascript">
-            document.addEventListener('DOMContentLoaded', function() {
-                var clearButton = document.getElementById('clear_group_id_button');
-                var selectElement = document.getElementById('woo_line_group_id_select');
-                var clearFlagInput = document.getElementById('clear_group_id_flag');
-
-                if (clearButton && selectElement && clearFlagInput) {
-                    clearButton.addEventListener('click', function(e) {
-                        if (confirm('<?php echo esc_js(__('您確定要清除已選擇的 LINE 群組 ID 嗎？這將使下拉選單恢復預設值，並在儲存設定後生效。', 'woo-line-notification')); ?>')) {
-                            selectElement.value = ''; 
-                            clearFlagInput.value = '1'; 
-                            this.disabled = true;
-                            alert('<?php echo esc_js(__('群組選擇已清除。請點擊「儲存設定」按鈕以完成操作。', 'woo-line-notification')); ?>');
-                        }
-                    });
-
-                    selectElement.addEventListener('change', function() {
-                        var shouldDisableButton = (this.value === '');
-                        clearButton.disabled = shouldDisableButton;
-                        if (this.value !== '') {
-                            clearFlagInput.value = '0';
-                        }
-                    });
-                }
-            });
-        </script>
         <?php
     }
 
@@ -468,7 +442,7 @@ class Woo_Line_Settings {
                             $category_id = sanitize_title($category);
                             ?>
                             <div class="shortcode-category">
-                                <div class="category-title" onclick="toggleCategory('<?php echo $category_id; ?>')">
+                                <div class="category-title" data-category-id="<?php echo esc_attr($category_id); ?>">
                                     <h4><?php echo esc_html($category); ?></h4>
                                     <span class="toggle-icon" id="<?php echo $category_id; ?>-icon">-</span>
                                 </div>
@@ -478,7 +452,7 @@ class Woo_Line_Settings {
                                         ?>
                                         <div class="shortcode-item">
                                             <div class="shortcode-name"><?php echo esc_html($info['說明']); ?></div>
-                                            <div class="shortcode-code" onclick="copyShortcode(this, '<?php echo esc_attr($code); ?>')"><?php echo esc_html($code); ?></div>
+                                            <div class="shortcode-code" data-shortcode="<?php echo esc_attr($code); ?>"><?php echo esc_html($code); ?></div>
                                             <div class="shortcode-example">範例：<?php echo esc_html($info['範例']); ?></div>
                                         </div>
                                         <?php
@@ -493,35 +467,6 @@ class Woo_Line_Settings {
                 </div>
             </div>
         </div>
-
-        <script>
-        function toggleCategory(categoryId) {
-            const content = document.getElementById(categoryId + '-content');
-            const icon = document.getElementById(categoryId + '-icon');
-            if (content.style.display === 'none') {
-                content.style.display = 'grid';
-                icon.textContent = '-';
-            } else {
-                content.style.display = 'none';
-                icon.textContent = '+';
-            }
-        }
-
-        function copyShortcode(element, shortcode) {
-            navigator.clipboard.writeText(shortcode);
-            
-            const originalText = element.textContent;
-            const originalBackground = element.style.backgroundColor;
-
-            element.textContent = '已複製！';
-            element.style.background = '#d1e7dd'; 
-            
-            setTimeout(() => {
-                element.textContent = originalText;
-                element.style.background = originalBackground || '#f0f0f1';
-            }, 1500);
-        }
-        </script>
         <?php
     }
 
@@ -564,30 +509,12 @@ class Woo_Line_Settings {
             <h3>🔗 Webhook URL 設定說明</h3>
             <p>請在 LINE Developers Console 中設定以下 Webhook URL：</p>
             <div class="webhook-url-container" style="position: relative;">
-                <code id="webhook-url" onclick="copyWebhookUrl(this)">
+                <code id="webhook-url">
                     <?php echo esc_url(get_rest_url(null, 'woo-line/v1/webhook')); ?>
                 </code>
                 <div id="webhook-copy-tooltip">已複製！</div>
             </div>
             <p class="description" style="margin-top: 5px; color: #646970;">點擊上方網址可直接複製</p>
-
-            <script>
-            function copyWebhookUrl(element) {
-                const url = element.textContent.trim();
-                navigator.clipboard.writeText(url);
-                
-                const originalBackground = element.style.backgroundColor;
-                element.style.backgroundColor = '#e2e4e7';
-                
-                const tooltip = document.getElementById('webhook-copy-tooltip');
-                tooltip.style.display = 'block';
-                
-                setTimeout(() => {
-                    element.style.backgroundColor = originalBackground;
-                    tooltip.style.display = 'none';
-                }, 2000);
-            }
-            </script>
 
             <h3>📝 設定步驟：</h3>
             <ol>

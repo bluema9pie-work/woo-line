@@ -3,7 +3,7 @@
  * Plugin Name: WooCommerce LINE 訂單通知
  * Plugin URI: https://aquarius.com.tw/
  * Description: 當有新訂單時，透過 LINE Messaging API 發送通知至指定群組
- * Version: 1.1.5
+ * Version: 1.1.6
  * Author: Aquarius
  * Author URI: https://aquarius.com.tw/
  * License: GPL-3.0-or-later
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 define('WOO_LINE_PLUGIN_FILE', __FILE__);
 define('WOO_LINE_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('WOO_LINE_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('WOO_LINE_VERSION', '1.1.5');
+define('WOO_LINE_VERSION', '1.1.6');
 
 /**
  * 檢查 WooCommerce 是否啟用
@@ -91,25 +91,49 @@ function woo_line_add_settings_link($links) {
 add_filter('plugin_action_links_' . plugin_basename(__FILE__), 'woo_line_add_settings_link');
 
 /**
- * 在後台載入 CSS 樣式表
+ * 在後台載入 CSS 樣式表和 JavaScript 腳本
  */
-function woo_line_enqueue_admin_styles($hook) {
+function woo_line_enqueue_admin_assets($hook) {
+    // 只在此外掛的設定頁面載入
     if ('settings_page_woo_line_settings' !== $hook) {
          return;
     }
 
+    // 載入 CSS
     $css_file_path = WOO_LINE_PLUGIN_PATH . 'assets/css/woo-line-styles.css';
     $css_file_url = WOO_LINE_PLUGIN_URL . 'assets/css/woo-line-styles.css';
-
     if (file_exists($css_file_path)) {
-        $version = filemtime($css_file_path);
-
+        $css_version = filemtime($css_file_path);
         wp_enqueue_style(
             'woo-line-admin-styles',
             $css_file_url,
             array(),
-            $version
+            $css_version
         );
     }
+
+    // 載入 JavaScript
+    $js_file_path = WOO_LINE_PLUGIN_PATH . 'assets/js/woo-line-admin.js';
+    $js_file_url = WOO_LINE_PLUGIN_URL . 'assets/js/woo-line-admin.js';
+    if (file_exists($js_file_path)) {
+        $js_version = filemtime($js_file_path);
+        wp_enqueue_script(
+            'woo-line-admin-script',
+            $js_file_url,
+            array('jquery'), // 可根據需要加入依賴，此處暫不加 jquery
+            $js_version,
+            true // 在頁尾載入
+        );
+
+        // 將 PHP 資料 (包含翻譯字串) 傳遞給 JavaScript
+        wp_localize_script('woo-line-admin-script', 'wooLineAdminData', array(
+            'l10n' => array(
+                'confirmClearGroupId' => __('您確定要清除已選擇的 LINE 群組 ID 嗎？這將使下拉選單恢復預設值，並在儲存設定後生效。', 'woo-line-notification'),
+                'groupIdCleared'      => __('群組選擇已清除。請點擊「儲存設定」按鈕以完成操作。', 'woo-line-notification'),
+                'copied'              => __('已複製！', 'woo-line-notification'),
+                'copyFailed'          => __('複製失敗！', 'woo-line-notification'),
+            )
+        ));
+    }
 }
-add_action('admin_enqueue_scripts', 'woo_line_enqueue_admin_styles');
+add_action('admin_enqueue_scripts', 'woo_line_enqueue_admin_assets');
