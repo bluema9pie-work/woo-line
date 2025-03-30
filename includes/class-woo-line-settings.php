@@ -4,6 +4,9 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit; // Exit if accessed directly
 }
 
+/**
+ * 管理外掛設定頁面和選項
+ */
 class Woo_Line_Settings {
 
     private $options;
@@ -28,7 +31,7 @@ class Woo_Line_Settings {
     }
 
     /**
-     * 初始化外掛設定
+     * 初始化外掛設定欄位和區段
      */
     public function settings_init() {
         register_setting('woo_line_settings', 'woo_line_settings');
@@ -82,17 +85,10 @@ class Woo_Line_Settings {
         }
     }
 
-    /**
-     * 設定區段的說明文字回調函數
-     */
     public function settings_section_callback() {
         echo '請輸入您的 LINE Messaging API 相關設定';
     }
 
-    /**
-     * 渲染 Channel Access Token 設定欄位
-     * @since 1.1.0
-     */
     public function channel_access_token_render() {
         $disabled = defined('WOO_LINE_CHANNEL_ACCESS_TOKEN');
         $value = $disabled ? '**********' : (isset($this->options['channel_access_token']) ? esc_attr($this->options['channel_access_token']) : '');
@@ -102,7 +98,6 @@ class Woo_Line_Settings {
             <p class="description">
                 <?php 
                 printf(
-                    /* translators: %s: Constant name */
                     esc_html__( '已在 %s 常數中定義。若要更改，請修改您的 wp-config.php 檔案。', 'woo-line-notification' ),
                     '<code>WOO_LINE_CHANNEL_ACCESS_TOKEN</code>'
                 );
@@ -112,10 +107,6 @@ class Woo_Line_Settings {
         <?php
     }
 
-    /**
-     * 渲染 Channel Secret 設定欄位
-     * @since 1.1.0
-     */
     public function channel_secret_render() {
         $disabled = defined('WOO_LINE_CHANNEL_SECRET');
         $value = $disabled ? '**********' : (isset($this->options['channel_secret']) ? esc_attr($this->options['channel_secret']) : '');
@@ -125,7 +116,6 @@ class Woo_Line_Settings {
             <p class="description">
                  <?php 
                 printf(
-                    /* translators: %s: Constant name */
                     esc_html__( '已在 %s 常數中定義。若要更改，請修改您的 wp-config.php 檔案。', 'woo-line-notification' ),
                     '<code>WOO_LINE_CHANNEL_SECRET</code>'
                 );
@@ -135,9 +125,6 @@ class Woo_Line_Settings {
         <?php
     }
 
-    /**
-     * 渲染群組 ID 設定欄位
-     */
     public function group_id_render() {
         $groups = get_option('woo_line_groups', array());
         ?>
@@ -159,9 +146,6 @@ class Woo_Line_Settings {
         <?php
     }
 
-    /**
-     * 渲染通知觸發條件設定欄位
-     */
     public function notification_triggers_render() {
         $triggers = isset($this->options['notification_triggers']) ? $this->options['notification_triggers'] : array('new_order');
         ?>
@@ -181,9 +165,6 @@ class Woo_Line_Settings {
         <?php
     }
 
-    /**
-     * 渲染取消訂單通知模板設定欄位
-     */
     public function cancelled_message_template_render() {
         $default_cancelled_template = "⚠️ 訂單已取消通知\n" .
             "訂單編號: [order-id]\n" .
@@ -204,14 +185,10 @@ class Woo_Line_Settings {
         <?php
     }
 
-    /**
-     * 渲染啟用除錯紀錄設定欄位
-     * @since 1.2.0
-     */
     public function enable_logging_render() {
         $checked = isset($this->options['enable_logging']) && $this->options['enable_logging'] === 'yes';
         ?>
-        <input type="hidden" name="woo_line_settings[enable_logging]" value="no"> <!-- 送出未勾選的值 -->
+        <input type="hidden" name="woo_line_settings[enable_logging]" value="no"> 
         <input type="checkbox" id="enable_logging" name="woo_line_settings[enable_logging]" value="yes" <?php checked($checked, true); ?>>
         <label for="enable_logging">啟用記錄功能</label>
         <p class="description">勾選後，外掛執行時的錯誤和詳細資訊將會被記錄到伺服器的錯誤記錄檔中。請只在除錯時啟用。</p>
@@ -219,7 +196,7 @@ class Woo_Line_Settings {
     }
 
     /**
-     * 取得所有可用於訊息模板中的欄位
+     * 取得所有可用於訊息模板中的欄位 (包含從最新訂單動態讀取的欄位)
      */
     private function get_available_fields() {
         $fields = array(
@@ -255,7 +232,6 @@ class Woo_Line_Settings {
             )
         );
 
-        // Initialize variables to hold field groups
         $billing_fields = array();
         $shipping_fields = array();
         $additional_fields = array();
@@ -266,24 +242,22 @@ class Woo_Line_Settings {
                 'limit' => 1,
                 'orderby' => 'date',
                 'order' => 'DESC',
-                'status' => array_keys(wc_get_order_statuses()) // 確保取得任何狀態的訂單
+                'status' => array_keys(wc_get_order_statuses())
             ));
 
             if (!empty($orders)) {
                 $order = $orders[0];
 
                 if (!$order instanceof WC_Order) {
-                    // 如果不是有效的訂單物件，直接返回預設欄位
                     return $fields;
                 }
 
                 $order_data = $order->get_data();
 
-                // 取得所有帳單欄位
+                // 帳單欄位
                 if (isset($order_data['billing']) && is_array($order_data['billing'])) {
                     $billing_data = $order_data['billing'];
                     foreach ($billing_data as $key => $value) {
-                        // 確保值是純量且非空
                         if (is_scalar($value) && $value !== '') {
                             $billing_fields['[billing_' . $key . ']'] = array(
                                 '說明' => '帳單 ' . ucfirst($key),
@@ -296,11 +270,10 @@ class Woo_Line_Settings {
                     $fields['購買人欄位'] = $billing_fields;
                 }
 
-                // 取得所有運送欄位
+                // 運送欄位
                 if (isset($order_data['shipping']) && is_array($order_data['shipping'])) {
                     $shipping_data = $order_data['shipping'];
                     foreach ($shipping_data as $key => $value) {
-                        // 確保值是純量且非空
                         if (is_scalar($value) && $value !== '') {
                             $shipping_fields['[shipping_' . $key . ']'] = array(
                                 '說明' => '運送 ' . ucfirst($key),
@@ -313,50 +286,44 @@ class Woo_Line_Settings {
                     $fields['收件人欄位'] = $shipping_fields;
                 }
 
-                // 取得所有自訂欄位 (Order Meta)
+                // 自訂欄位 (Order Meta)
                 $meta_data_array = $order->get_meta_data();
                 if (is_array($meta_data_array)) {
                     foreach ($meta_data_array as $meta) {
-                        // 確保 $meta 是 WC_Meta_Data 物件
                         if (!$meta instanceof WC_Meta_Data) continue;
 
-                        $current_meta_data = $meta->get_data(); // 從 meta 物件獲取資料陣列
-                        // 檢查 get_data() 是否返回了帶有 key 和 value 的有效陣列
+                        $current_meta_data = $meta->get_data(); 
                         if (!is_array($current_meta_data) || !isset($current_meta_data['key']) || !isset($current_meta_data['value'])) continue;
 
                         $meta_key = $current_meta_data['key'];
                         $meta_value = $current_meta_data['value'];
 
-                        // 排除系統內部使用的欄位和已經處理過的欄位
+                        // 排除內部或重複欄位
                         if (is_scalar($meta_value) && $meta_value !== '' &&
                             strpos($meta_key, '_') !== 0 &&
                             !isset($additional_fields['[' . $meta_key . ']']) &&
-                            !isset($billing_fields['[billing_' . $meta_key . ']']) && // 避免重複帳單欄位
-                            !isset($shipping_fields['[shipping_' . $meta_key . ']'])) { // 避免重複運送欄位
+                            !isset($billing_fields['[billing_' . $meta_key . ']']) && 
+                            !isset($shipping_fields['[shipping_' . $meta_key . ']'])) { 
 
                             $additional_fields['[' . $meta_key . ']'] = array(
                                 '說明' => str_replace('_', ' ', ucfirst($meta_key)),
-                                '範例' => $meta_value // 因為已經檢查過 is_scalar
+                                '範例' => $meta_value 
                             );
                         }
                     }
                 }
 
-                // 如果有額外欄位，加入到欄位列表中
                 if (!empty($additional_fields)) {
-                    // 將所有找到的自訂欄位歸類
                     $fields['自訂欄位 (來自訂單 Meta)'] = $additional_fields;
                 }
-            } // 結束 if (!empty($orders))
+            }
 
         } catch (Exception $e) {
-            // 捕獲讀取訂單資料時的任何異常
-            $options = get_option('woo_line_settings'); // 需要重新獲取選項
+            $options = get_option('woo_line_settings');
             if (isset($options['enable_logging']) && $options['enable_logging'] === 'yes') {
                 error_log('WooLine Settings Error (get_available_fields): Exception caught. Error: ' . $e->getMessage());
             }
-            // 返回基礎欄位，避免頁面崩潰
-            // 在捕獲到任何異常時，只返回預設欄位
+            // 發生錯誤時返回基礎欄位
             return array(
                 '預設項目' => $fields['預設項目']
             );
@@ -366,7 +333,7 @@ class Woo_Line_Settings {
     }
 
     /**
-     * 修改訊息模板編輯區的顯示
+     * 渲染訊息模板編輯器 (包含簡碼列表)
      */
     public function message_template_render() {
         $default_template = "🔔叮咚！有一筆新的訂單！\n" .
@@ -381,7 +348,6 @@ class Woo_Line_Settings {
         ?>
         <div class="message-template-container">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                <!-- 左側：訊息模板編輯區 -->
                 <div class="template-editor">
                     <div class="shortcodes-header">
                         <h3>📝 訊息模板編輯</h3>
@@ -391,7 +357,6 @@ class Woo_Line_Settings {
                     <p class="description" style="color: #d63638;">注意：「購買人欄位」、「收件人欄位」、「訂單額外欄位」和「自訂欄位」需要有訂單資料後才會顯示完整的可用簡碼。</p>
                 </div>
 
-                <!-- 右側：可用簡碼說明 -->
                 <div class="shortcodes-container">
                     <div class="shortcodes-header">
                         <h3>🔍 可用簡碼列表</h3>
@@ -430,8 +395,6 @@ class Woo_Line_Settings {
             </div>
         </div>
 
-        <div class="copy-tooltip" id="copyTooltip">已複製！</div>
-
         <script>
         function toggleCategory(categoryId) {
             const content = document.getElementById(categoryId + '-content');
@@ -448,27 +411,23 @@ class Woo_Line_Settings {
         function copyShortcode(element, shortcode) {
             navigator.clipboard.writeText(shortcode);
             
-            const tooltip = document.getElementById('copyTooltip');
-            const rect = element.getBoundingClientRect();
-            tooltip.style.left = rect.left + 'px';
-            tooltip.style.top = (rect.top - 30) + 'px';
-            tooltip.style.display = 'block';
+            const originalText = element.textContent;
+            const originalBackground = element.style.backgroundColor;
+
+            element.textContent = '已複製！';
+            element.style.background = '#d1e7dd'; 
             
             setTimeout(() => {
-                tooltip.style.display = 'none';
-            }, 2000);
-
-            element.style.background = '#e2e4e7';
-            setTimeout(() => {
-                element.style.background = '#f0f0f1';
-            }, 200);
+                element.textContent = originalText;
+                element.style.background = originalBackground || '#f0f0f1';
+            }, 1500);
         }
         </script>
         <?php
     }
 
     /**
-     * 渲染設定頁面
+     * 渲染設定頁面整體結構
      */
     public function options_page() {
         // 處理測試訊息發送
@@ -485,7 +444,6 @@ class Woo_Line_Settings {
         <div class="wrap">
             <h2>WooCommerce LINE 通知設定</h2>
             
-            <!-- 主要設定表單區塊 -->
             <form action='options.php' method='post'>
                 <?php
                 settings_fields('woo_line_settings');
@@ -494,7 +452,6 @@ class Woo_Line_Settings {
                 ?>
             </form>
 
-            <!-- Webhook URL 設定說明區塊 -->
             <hr>
             <h3>🔗 Webhook URL 設定說明</h3>
             <p>請在 LINE Developers Console 中設定以下 Webhook URL：</p>
@@ -524,7 +481,6 @@ class Woo_Line_Settings {
             }
             </script>
 
-            <!-- 設定步驟說明區塊 -->
             <h3>📝 設定步驟：</h3>
             <ol>
                 <li>在 LINE Developers Console 中設定上方的 Webhook URL</li>
@@ -536,7 +492,6 @@ class Woo_Line_Settings {
                 <li>選擇要接收通知的群組後儲存設定</li>
             </ol>
 
-            <!-- 測試功能區塊 -->
             <hr>
             <h3>🔔 測試通知</h3>
             <div>
@@ -556,9 +511,6 @@ class Woo_Line_Settings {
         <?php
     }
 
-    /**
-     * 顯示管理員通知
-     */
     private function display_admin_notice($status, $message) {
         $class = ($status === 'success') ? 'notice-success' : 'notice-error';
         echo '<div class="notice ' . $class . ' is-dismissible"><p>' . $message . '</p></div>';

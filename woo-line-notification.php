@@ -3,7 +3,7 @@
  * Plugin Name: WooCommerce LINE 訂單通知
  * Plugin URI: https://aquarius.com.tw/
  * Description: 當有新訂單時，透過 LINE Messaging API 發送通知至指定群組
- * Version: 1.1.2
+ * Version: 1.1.3
  * Author: Aquarius
  * Author URI: https://aquarius.com.tw/
  * License: GPL-3.0-or-later
@@ -19,8 +19,11 @@ if (!defined('ABSPATH')) {
 define('WOO_LINE_PLUGIN_FILE', __FILE__);
 define('WOO_LINE_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('WOO_LINE_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('WOO_LINE_VERSION', '1.1.2');
+define('WOO_LINE_VERSION', '1.1.3');
 
+/**
+ * 檢查 WooCommerce 是否啟用
+ */
 function woo_line_check_woocommerce_active() {
     if (!class_exists('WooCommerce')) {
         add_action('admin_notices', 'woo_line_woocommerce_inactive_notice');
@@ -29,7 +32,9 @@ function woo_line_check_woocommerce_active() {
     return true;
 }
 
-
+/**
+ * 顯示 WooCommerce 未啟用提示
+ */
 function woo_line_woocommerce_inactive_notice() {
     ?>
     <div class="error">
@@ -38,7 +43,9 @@ function woo_line_woocommerce_inactive_notice() {
     <?php
 }
 
-
+/**
+ * 外掛啟用時檢查相依性
+ */
 function woo_line_plugin_activate() {
     if (!woo_line_check_woocommerce_active()) {
         deactivate_plugins(plugin_basename(__FILE__));
@@ -52,6 +59,9 @@ function woo_line_plugin_activate() {
 }
 register_activation_hook(__FILE__, 'woo_line_plugin_activate');
 
+/**
+ * 載入外掛主要檔案和初始化
+ */
 function woo_line_load_plugin() {
     if (!woo_line_check_woocommerce_active()) {
         return; 
@@ -70,6 +80,9 @@ function woo_line_load_plugin() {
 }
 add_action('plugins_loaded', 'woo_line_load_plugin');
 
+/**
+ * 在外掛列表頁面加入設定連結
+ */
 function woo_line_add_settings_link($links) {
     $settings_link = '<a href="' . admin_url('options-general.php?page=woo_line_settings') . '">' . __('設定', 'woo-line-notification') . '</a>';
     array_unshift($links, $settings_link);
@@ -77,6 +90,9 @@ function woo_line_add_settings_link($links) {
 }
 add_filter('plugin_action_links_' . plugin_basename(__FILE__), 'woo_line_add_settings_link');
 
+/**
+ * 在後台載入 CSS 樣式表
+ */
 function woo_line_enqueue_admin_styles($hook) {
     if ('settings_page_woo_line_settings' !== $hook) {
          return;

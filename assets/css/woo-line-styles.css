@@ -99,16 +99,6 @@
     font-size: 11px;
     color: #646970;
 }
-.copy-tooltip {
-    display: none;
-    position: absolute;
-    background: #1d2327;
-    color: #fff;
-    padding: 3px 6px;
-    border-radius: 2px;
-    font-size: 11px;
-    z-index: 100;
-}
 
 /* Webhook URL Section */
 #webhook-url {

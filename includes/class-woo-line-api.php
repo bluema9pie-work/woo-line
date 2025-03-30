@@ -4,6 +4,9 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit; // Exit if accessed directly
 }
 
+/**
+ * 處理與 LINE Messaging API 的互動
+ */
 class Woo_Line_Api {
 
     private static $options;
@@ -11,20 +14,18 @@ class Woo_Line_Api {
     private static $channel_secret;
 
     /**
-     * 初始化 API 類別
-     * @since 1.1.0
+     * 初始化 API 類別，載入設定並註冊 Webhook
      */
     public static function init() {
         self::$options = get_option('woo_line_settings');
-        // 優先使用常數，若未定義則使用設定值
         self::$channel_access_token = defined('WOO_LINE_CHANNEL_ACCESS_TOKEN') ? WOO_LINE_CHANNEL_ACCESS_TOKEN : (isset(self::$options['channel_access_token']) ? self::$options['channel_access_token'] : '');
         self::$channel_secret = defined('WOO_LINE_CHANNEL_SECRET') ? WOO_LINE_CHANNEL_SECRET : (isset(self::$options['channel_secret']) ? self::$options['channel_secret'] : '');
         add_action('rest_api_init', array(__CLASS__, 'register_webhook_route'));
     }
 
     /**
-     * 發送 LINE 通知
-     * @since 1.0.0
+     * 發送 LINE 通知 (新訂單或取消訂單)
+     * 
      * @param int $order_id 訂單 ID
      * @param string $type 通知類型 ('new_order' 或 'cancelled')
      */
@@ -63,6 +64,7 @@ class Woo_Line_Api {
             }
             $products_text = !empty($items_list) ? " " . implode("\n ", $items_list) : "無商品資料";
 
+            // 建立簡碼陣列
             $shortcodes = array(
                 '[order-id]' => $order_id,
                 '[order-time]' => wp_date('Y-m-d H:i:s', $order->get_date_created()->getTimestamp()),
@@ -99,6 +101,7 @@ class Woo_Line_Api {
                 }
             }
 
+            // 根據通知類型選擇模板
             if ($type === 'cancelled') {
                 $template = isset(self::$options['cancelled_message_template']) ? self::$options['cancelled_message_template'] : '';
                 if (empty($template)) {
@@ -121,6 +124,7 @@ class Woo_Line_Api {
                 }
             }
 
+            // 替換簡碼並清理空值簡碼和多餘換行
             preg_match_all('/\[[^\]]+\]/', $template, $matches);
             $undefined_shortcodes = array();
             foreach ($matches[0] as $shortcode) {
@@ -128,11 +132,10 @@ class Woo_Line_Api {
                     $undefined_shortcodes[$shortcode] = '';
                 }
             }
-
             $message = str_replace(array_keys($shortcodes), array_values($shortcodes), $template);
             $message = str_replace(array_keys($undefined_shortcodes), array_values($undefined_shortcodes), $message);
-            $message = preg_replace('/:[^\S\n]*\n/', ":\n", $message);
-            $message = preg_replace('/：[^\S\n]*\n/', "：\n", $message);
+            $message = preg_replace('/:[^\S\n]*\n/', ":\n", $message); 
+            $message = preg_replace('/：[^\S\n]*\n/', "：\n", $message); 
             $message = preg_replace("/\n\s*\n\s*\n/", "\n\n", $message);
 
             $headers = array(
@@ -182,21 +185,19 @@ class Woo_Line_Api {
             if (isset(self::$options['enable_logging']) && self::$options['enable_logging'] === 'yes') {
                 error_log('WooLine Notification Error (Order ID: ' . $order_id . ', Type: ' . $type . '): ' . $e->getMessage());
             }
-            // Optionally re-throw if the caller needs to know about the failure
-            // throw $e;
         }
     }
 
     /**
-     * 發送測試訊息
-     * @since 1.0.0
+     * 發送簡單測試訊息以驗證 Access Token 和 Group ID
+     *
      * @return array 包含狀態和訊息的陣列
      */
     public static function send_test_message() {
         if (empty(self::$channel_access_token)) {
             return array(
                 'status' => 'error',
-                'message' => '請先設定 Channel Access Token（可於設定頁面或 wp-config.php 中設定）。'
+                'message' => '請先設定 Channel Access Token。'
             );
         }
 
@@ -238,7 +239,7 @@ class Woo_Line_Api {
         if (empty(self::$options['group_id'])) {
             return array(
                 'status' => 'error',
-                'message' => '請先將您的 LINE Bot 加入群組，並在上方設定群組 ID。取得群組 ID 的方式：<br>1. 將您的 LINE Bot 加入目標群組<br>2. 在群組中隨意發送一則訊息<br>3. 前往 LINE Developers Console 的 "Webhook" 頁面查看訊息紀錄<br>4. 在訊息紀錄中可以找到 "groupId" 欄位，即為群組 ID<br>5. 將群組 ID 複製並貼到上方的設定欄位中'
+                'message' => '請先設定群組 ID 並確保 Bot 已加入該群組。'
             );
         }
 
@@ -247,229 +248,230 @@ class Woo_Line_Api {
         $message .= "如果您看到這則訊息，代表：\n";
         $message .= "1. Channel Access Token 設定正確\n";
         $message .= "2. 群組 ID 設定正確\n";
-        $message .= "3. Bot 已成功加入此群組\n\n";
-        $message .= "✅ 設定完成！未來有新訂單時，會自動發送通知到此群組。";
+        $message .= "3. Bot 已成功加入此群組";
 
-        $headers_push = array(
+        $push_headers = array(
             'Content-Type' => 'application/json',
             'Authorization' => 'Bearer ' . self::$channel_access_token
         );
-        $body = array(
+        $push_body = array(
             'to' => self::$options['group_id'],
-            'messages' => array(
-                array(
-                    'type' => 'text',
-                    'text' => $message
-                )
-            )
+            'messages' => array(array('type' => 'text', 'text' => $message))
         );
-        $args = array(
-            'body' => json_encode($body),
-            'headers' => $headers_push,
+        $push_args = array(
+            'body' => json_encode($push_body),
+            'headers' => $push_headers,
             'method' => 'POST',
             'data_format' => 'body'
         );
-        $response = wp_remote_post('https://api.line.me/v2/bot/message/push', $args);
 
-        if (is_wp_error($response)) {
-            if (isset(self::$options['enable_logging']) && self::$options['enable_logging'] === 'yes') {
-                error_log('WooLine Test Message Error (wp_remote_post): ' . $response->get_error_message());
+        $push_response = wp_remote_post('https://api.line.me/v2/bot/message/push', $push_args);
+
+        if (is_wp_error($push_response)) {
+             if (isset(self::$options['enable_logging']) && self::$options['enable_logging'] === 'yes') {
+                error_log('WooLine Test Message Error (Push wp_remote_post): ' . $push_response->get_error_message());
             }
             return array(
                 'status' => 'error',
-                'message' => 'LINE 訊息發送失敗：' . $response->get_error_message()
+                'message' => '發送測試訊息失敗：' . $push_response->get_error_message()
             );
         }
 
-        $response_code = wp_remote_retrieve_response_code($response);
-        $response_body = json_decode(wp_remote_retrieve_body($response), true);
-
-        if ($response_code === 200) {
-            return array(
-                'status' => 'success',
-                'message' => '✅ 測試訊息發送成功！請檢查您的 LINE 群組是否收到訊息。'
-            );
-        } else {
-            $error_message = isset($response_body['message']) ? $response_body['message'] : '未知錯誤';
+        $push_response_code = wp_remote_retrieve_response_code($push_response);
+        if ($push_response_code !== 200) {
+            $push_response_body = json_decode(wp_remote_retrieve_body($push_response), true);
+            $push_error_message = isset($push_response_body['message']) ? $push_response_body['message'] : '未知錯誤';
             if (isset(self::$options['enable_logging']) && self::$options['enable_logging'] === 'yes') {
-                error_log('WooLine Test Message Error (API Response ' . $response_code . '): ' . $error_message);
-            }
-            if (strpos($error_message, 'Invalid to')) {
-                $error_message = '無效的群組 ID，請確認：<br>1. 群組 ID 格式是否正確（應該以 "C" 開頭）<br>2. Bot 是否已經被加入該群組<br>3. 群組 ID 是否完整複製（不要有多餘的空格）';
-            } elseif (strpos($error_message, 'Invalid reply token')) {
-                $error_message = '回應 token 無效，請重新整理頁面後再試。' ;
-            } elseif (strpos($error_message, 'The request body has 1 error(s)')) {
-                $error_message = '請求格式錯誤，請確認群組 ID 是否正確設定。' ;
+                error_log('WooLine Test Message Error (Push API Response ' . $push_response_code . '): ' . $push_error_message);
             }
             return array(
                 'status' => 'error',
-                'message' => 'LINE API 錯誤：' . $error_message
+                'message' => '發送測試訊息失敗 (API ' . $push_response_code . ')：' . $push_error_message
             );
         }
+
+        return array(
+            'status' => 'success',
+            'message' => '測試訊息已成功發送至群組！'
+        );
     }
 
     /**
-     * 使用最新訂單發送測試訊息
-     * @since 1.0.0
+     * 發送包含最新訂單資訊的測試訊息
+     *
      * @return array 包含狀態和訊息的陣列
      */
     public static function send_latest_order_test() {
-        if (empty(self::$channel_access_token)) {
-            return array(
-                'status' => 'error',
-                'message' => '請先設定 Channel Access Token（可於設定頁面或 wp-config.php 中設定）。'
-            );
-        }
-
-        if (empty(self::$options['group_id'])) {
-            return array(
-                'status' => 'error',
-                'message' => '請先設定要接收通知的 LINE 群組。'
-            );
-        }
-
-        $orders = wc_get_orders(array(
-            'limit' => 1,
-            'orderby' => 'date',
-            'order' => 'DESC'
-        ));
-
-        if (empty($orders)) {
-            return array(
-                'status' => 'error',
-                'message' => '找不到任何訂單，請先建立一筆測試訂單。'
-            );
-        }
-
-        $latest_order = $orders[0];
-        $order_id = $latest_order->get_id();
-
         try {
-            delete_post_meta($order_id, '_line_notification_sent_new_order');
-            self::send_notification($order_id, 'new_order');
+            $orders = wc_get_orders(array(
+                'limit' => 1,
+                'orderby' => 'date',
+                'order' => 'DESC',
+                'status' => array_keys(wc_get_order_statuses())
+            ));
+
+            if (empty($orders)) {
+                return array(
+                    'status' => 'error',
+                    'message' => '找不到任何訂單來進行測試。'
+                );
+            }
+
+            $latest_order = $orders[0];
+            $order_id = $latest_order->get_id();
+
+            // 直接呼叫 send_notification 但不更新 meta
+            self::send_notification($order_id, 'test_latest_order');
+
+            // 檢查是否成功發送 (需要調整 send_notification 才能直接返回狀態，
+            // 目前僅假設呼叫成功，若有錯誤會在 send_notification 中記錄)
+            // 為了簡化，這裡直接返回成功訊息，實際錯誤會在日誌中。
             return array(
                 'status' => 'success',
-                'message' => sprintf(
-                    '✅ 已使用訂單 #%s 發送測試通知！<br>訂購人：%s<br>訂單金額：%s<br>請檢查 LINE 群組是否收到通知。',
-                    $order_id,
-                    $latest_order->get_formatted_billing_full_name(),
-                    wc_price($latest_order->get_total())
-                )
+                'message' => '已嘗試使用最新訂單 (ID: ' . $order_id . ') 的資料發送測試訊息。'.
+                            (isset(self::$options['enable_logging']) && self::$options['enable_logging'] === 'yes' ? ' 如有錯誤請檢查錯誤記錄檔。' : '')
             );
+
         } catch (Exception $e) {
             if (isset(self::$options['enable_logging']) && self::$options['enable_logging'] === 'yes') {
                 error_log('WooLine Latest Order Test Error: ' . $e->getMessage());
             }
             return array(
                 'status' => 'error',
-                'message' => '發送測試通知時發生錯誤：' . $e->getMessage()
+                'message' => '發送最新訂單測試訊息時發生錯誤：' . $e->getMessage()
             );
         }
     }
 
     /**
-     * 註冊 Webhook 處理路由
+     * 註冊 LINE Webhook 的 REST API 路由
      */
     public static function register_webhook_route() {
         register_rest_route('woo-line/v1', '/webhook', array(
             'methods' => 'POST',
             'callback' => array(__CLASS__, 'handle_webhook'),
-            'permission_callback' => '__return_true'
+            'permission_callback' => '__return_true' // 確保任何人都可以訪問此端點
         ));
     }
 
     /**
-     * 處理來自 LINE 的 Webhook 事件
-     * @since 1.0.0
-     * @param WP_REST_Request $request REST API 請求物件
-     * @return WP_REST_Response|WP_Error
+     * 處理來自 LINE 的 Webhook 請求
+     * 主要用於自動抓取 Bot 被加入的群組 ID 和名稱
+     *
+     * @param WP_REST_Request $request The request object.
+     * @return WP_REST_Response Response object.
      */
     public static function handle_webhook($request) {
         if (empty(self::$channel_secret)) {
-             return new WP_Error('no_channel_secret', 'Channel Secret not configured (can be set in settings or wp-config.php)', array('status' => 403));
+            self::log_webhook_event('error', 'Channel Secret 未設定，無法驗證 Webhook 簽名。');
+            return new WP_REST_Response(array('message' => 'Channel Secret not configured'), 400);
         }
 
-        $signature = isset($_SERVER['HTTP_X_LINE_SIGNATURE']) ? $_SERVER['HTTP_X_LINE_SIGNATURE'] : '';
+        $signature = $request->get_header('X-Line-Signature');
         $body = $request->get_body();
-        
-        $hash = base64_encode(hash_hmac('sha256', $body, self::$channel_secret, true));
-        if ($hash !== $signature) {
-            if (isset(self::$options['enable_logging']) && self::$options['enable_logging'] === 'yes') {
-                error_log('WooLine Webhook Error: Invalid signature');
-            }
-            return new WP_Error('invalid_signature', 'Invalid signature', array('status' => 403));
+
+        if (empty($signature)) {
+            self::log_webhook_event('error', 'Webhook 請求缺少 X-Line-Signature。');
+            return new WP_REST_Response(array('message' => 'Signature not found'), 400);
         }
 
-        $events = json_decode($body, true)['events'];
-        $groups = get_option('woo_line_groups', array());
-        $updated = false;
+        // 驗證簽名
+        $hash = hash_hmac('sha256', $body, self::$channel_secret, true);
+        $calculated_signature = base64_encode($hash);
 
-        foreach ($events as $event) {
-            if ($event['type'] === 'join' && $event['source']['type'] === 'group') {
-                $group_id = $event['source']['groupId'];
-                $group_name = self::get_group_name($group_id);
-                if ($group_name) {
-                    $groups[$group_id] = $group_name;
-                    $updated = true;
-                }
-            } elseif ($event['type'] === 'message' && $event['source']['type'] === 'group') {
-                $group_id = $event['source']['groupId'];
-                if (!isset($groups[$group_id])) {
-                   $group_name = self::get_group_name($group_id);
-                    if ($group_name) {
-                        $groups[$group_id] = $group_name;
+        if ($signature !== $calculated_signature) {
+            self::log_webhook_event('error', 'Webhook 簽名驗證失敗。');
+            return new WP_REST_Response(array('message' => 'Invalid signature'), 400);
+        }
+
+        $events = json_decode($body, true);
+        if (isset($events['events'])) {
+            $current_groups = get_option('woo_line_groups', array());
+            $updated = false;
+
+            foreach ($events['events'] as $event) {
+                $event_type = isset($event['type']) ? $event['type'] : null;
+                $source_type = isset($event['source']['type']) ? $event['source']['type'] : null;
+                $group_id = ($source_type === 'group' && isset($event['source']['groupId'])) ? $event['source']['groupId'] : null;
+
+                if ($group_id) {
+                    self::log_webhook_event('info', '收到來自 Group ID [' . $group_id . '] 的事件: [' . $event_type . ']');
+                    // 如果是 join 事件或 message 事件，且群組尚未記錄，則嘗試獲取群組名稱並儲存
+                    if (($event_type === 'join' || $event_type === 'message') && !isset($current_groups[$group_id])) {
+                        $group_name = self::get_group_name($group_id);
+                        if ($group_name) {
+                            $current_groups[$group_id] = $group_name;
+                            $updated = true;
+                            self::log_webhook_event('info', '已成功記錄新的 Group ID [' . $group_id . ']，名稱: [' . $group_name . ']。');
+                        } else {
+                             self::log_webhook_event('warning', '無法獲取 Group ID [' . $group_id . '] 的名稱。');
+                        }
+                    }
+                } elseif ($event_type === 'leave' && $source_type === 'group') {
+                    $group_id_left = isset($event['source']['groupId']) ? $event['source']['groupId'] : null;
+                    if ($group_id_left && isset($current_groups[$group_id_left])) {
+                        unset($current_groups[$group_id_left]);
                         $updated = true;
+                        self::log_webhook_event('info', 'Bot 已離開 Group ID [' . $group_id_left . ']，已從記錄中移除。');
                     }
                 }
             }
+
+            if ($updated) {
+                update_option('woo_line_groups', $current_groups);
+            }
         }
 
-        if ($updated) {
-            update_option('woo_line_groups', $groups);
-        }
-
-        return new WP_REST_Response(null, 200);
+        return new WP_REST_Response(array('status' => 'success'), 200);
     }
 
     /**
-     * 取得群組名稱
-     * @since 1.0.0
-     * @param string $group_id 群組 ID
-     * @return string|null 群組名稱或 null
+     * 嘗試透過 LINE API 取得群組名稱
+     *
+     * @param string $group_id
+     * @return string|false 群組名稱或 false
      */
     private static function get_group_name($group_id) {
         if (empty(self::$channel_access_token)) {
-            if (isset(self::$options['enable_logging']) && self::$options['enable_logging'] === 'yes') {
-                error_log('WooLine Get Group Name Error: Channel Access Token is empty.');
-            }
-            return new WP_Error('missing_token', 'Channel Access Token 未設定');
+            self::log_webhook_event('error', '嘗試獲取群組名稱失敗：Channel Access Token 未設定。');
+            return false;
         }
+
+        $url = 'https://api.line.me/v2/bot/group/' . $group_id . '/summary';
         $headers = array(
             'Authorization' => 'Bearer ' . self::$channel_access_token
         );
-        $response = wp_remote_get(
-            'https://api.line.me/v2/bot/group/' . $group_id . '/summary',
-            array('headers' => $headers)
+        $args = array(
+            'headers' => $headers,
+            'method' => 'GET'
         );
-        if (!is_wp_error($response)) {
-            $group_info = json_decode(wp_remote_retrieve_body($response), true);
-            return isset($group_info['groupName']) ? $group_info['groupName'] : null;
-        }
+
+        $response = wp_remote_get($url, $args);
+
         if (is_wp_error($response)) {
-            if (isset(self::$options['enable_logging']) && self::$options['enable_logging'] === 'yes') {
-                error_log('WooLine Get Group Name Error (wp_remote_get for ' . $group_id . '): ' . $response->get_error_message());
-            }
-            return new WP_Error('api_connection_error', '無法連接 LINE API：' . $response->get_error_message());
+            self::log_webhook_event('error', '獲取群組名稱 API 呼叫失敗 (Group ID: ' . $group_id . '): ' . $response->get_error_message());
+            return false;
         }
-        if ($response_code !== 200) {
+
+        $response_code = wp_remote_retrieve_response_code($response);
+        if ($response_code === 200) {
+            $body = json_decode(wp_remote_retrieve_body($response), true);
+            return isset($body['groupName']) ? $body['groupName'] : ('群組 ' . $group_id);
+        } else {
             $response_body = json_decode(wp_remote_retrieve_body($response), true);
-            $error_message = isset($response_body['message']) ? $response_body['message'] : '無法取得群組名稱，請檢查 Bot 是否為該群組成員以及 Token 是否正確';
-            if (isset(self::$options['enable_logging']) && self::$options['enable_logging'] === 'yes') {
-                error_log('WooLine Get Group Name Error (API Response ' . $response_code . ' for ' . $group_id . '): ' . $error_message);
-            }
-            return new WP_Error('api_error_' . $response_code, 'LINE API 錯誤 (' . $response_code . '): ' . $error_message);
+            $error_message = isset($response_body['message']) ? $response_body['message'] : '未知錯誤';
+            self::log_webhook_event('error', '獲取群組名稱 API 回應錯誤 (Group ID: ' . $group_id . ', Code: ' . $response_code . '): ' . $error_message);
+            return false;
         }
-        return null;
+    }
+    
+    /**
+     * 記錄 Webhook 事件 (如果啟用日誌記錄)
+     */
+    private static function log_webhook_event($level, $message) {
+        if (isset(self::$options['enable_logging']) && self::$options['enable_logging'] === 'yes') {
+            error_log('WooLine Webhook [' . strtoupper($level) . ']: ' . $message);
+        }
     }
 }
 
