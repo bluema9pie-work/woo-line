@@ -97,7 +97,7 @@ class Woo_Line_Settings {
         $disabled = defined('WOO_LINE_CHANNEL_ACCESS_TOKEN');
         $value = $disabled ? '**********' : (isset($this->options['channel_access_token']) ? esc_attr($this->options['channel_access_token']) : '');
         ?>
-        <input type='text' name='woo_line_settings[channel_access_token]' value='<?php echo $value; ?>' style="width: 400px;" <?php disabled($disabled, true); ?>>
+        <input type='text' name='woo_line_settings[channel_access_token]' value='<?php echo $value; ?>' <?php disabled($disabled, true); ?>>
         <?php if ($disabled): ?>
             <p class="description">
                 <?php 
@@ -120,7 +120,7 @@ class Woo_Line_Settings {
         $disabled = defined('WOO_LINE_CHANNEL_SECRET');
         $value = $disabled ? '**********' : (isset($this->options['channel_secret']) ? esc_attr($this->options['channel_secret']) : '');
         ?>
-        <input type='text' name='woo_line_settings[channel_secret]' value='<?php echo $value; ?>' style="width: 400px;" <?php disabled($disabled, true); ?>>
+        <input type='text' name='woo_line_settings[channel_secret]' value='<?php echo $value; ?>' <?php disabled($disabled, true); ?>>
         <?php if ($disabled): ?>
             <p class="description">
                  <?php 
@@ -141,7 +141,7 @@ class Woo_Line_Settings {
     public function group_id_render() {
         $groups = get_option('woo_line_groups', array());
         ?>
-        <select name='woo_line_settings[group_id]' style="width: 400px;">
+        <select name='woo_line_settings[group_id]'>
             <option value=''>請選擇群組</option>
             <?php foreach ($groups as $group_id => $group_name): ?>
                 <option value='<?php echo esc_attr($group_id); ?>' <?php selected(isset($this->options['group_id']) ? $this->options['group_id'] : '', $group_id); ?>>
@@ -165,13 +165,13 @@ class Woo_Line_Settings {
     public function notification_triggers_render() {
         $triggers = isset($this->options['notification_triggers']) ? $this->options['notification_triggers'] : array('new_order');
         ?>
-        <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px;">
+        <div>
+            <label>
                 <input type="checkbox" name="woo_line_settings[notification_triggers][]" value="new_order"
                     <?php checked(in_array('new_order', $triggers)); ?>>
                 新訂單建立時發送通知
             </label>
-            <label style="display: block;">
+            <label>
                 <input type="checkbox" name="woo_line_settings[notification_triggers][]" value="order_cancelled"
                     <?php checked(in_array('order_cancelled', $triggers)); ?>>
                 訂單取消時發送通知
@@ -194,11 +194,11 @@ class Woo_Line_Settings {
         $template = isset($this->options['cancelled_message_template']) ? $this->options['cancelled_message_template'] : $default_cancelled_template;
         ?>
         <div class="message-template-container">
-            <div class="template-editor" style="max-width: 600px;">
+            <div class="template-editor">
                 <div class="shortcodes-header">
                     <h3>📝 取消訂單通知模板編輯</h3>
                 </div>
-                <textarea name='woo_line_settings[cancelled_message_template]' rows='10' style='width: 100%;'><?php echo esc_textarea($template); ?></textarea>
+                <textarea name='woo_line_settings[cancelled_message_template]' rows='10'><?php echo esc_textarea($template); ?></textarea>
             </div>
         </div>
         <?php
@@ -379,118 +379,6 @@ class Woo_Line_Settings {
         
         $template = isset($this->options['message_template']) ? $this->options['message_template'] : $default_template;
         ?>
-        <style>
-            .message-template-container {
-                max-width: 1200px;
-                margin: 10px 0;
-            }
-            .template-editor {
-                background: #fff;
-                border: 1px solid #ccd0d4;
-                border-radius: 4px;
-                padding: 10px;
-                margin-bottom: 10px;
-            }
-            .template-editor textarea {
-                border: 1px solid #ddd;
-                border-radius: 4px;
-                padding: 8px;
-                font-family: Consolas, Monaco, monospace;
-                resize: vertical;
-            }
-            .shortcodes-container {
-                background: #fff;
-                border: 1px solid #ccd0d4;
-                border-radius: 4px;
-                padding: 10px;
-            }
-            .shortcodes-header {
-                margin: -10px -10px 10px -10px;
-                padding: 8px 10px;
-                background: #f8f9fa;
-                border-bottom: 1px solid #ccd0d4;
-                border-radius: 4px 4px 0 0;
-            }
-            .shortcodes-header h3 {
-                margin: 0;
-                color: #1d2327;
-                font-size: 14px;
-            }
-            .shortcode-category {
-                margin-bottom: 10px;
-            }
-            .category-title {
-                display: flex;
-                align-items: center;
-                margin-bottom: 5px;
-                padding: 5px 8px;
-                background: #f0f0f1;
-                border-radius: 4px;
-                cursor: pointer;
-            }
-            .category-title h4 {
-                margin: 0;
-                flex-grow: 1;
-                color: #1d2327;
-                font-size: 13px;
-            }
-            .category-title .toggle-icon {
-                color: #1d2327;
-                font-size: 16px;
-            }
-            .shortcode-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-                gap: 5px;
-                margin-top: 5px;
-            }
-            .shortcode-item {
-                background: #f8f9fa;
-                border: 1px solid #e2e4e7;
-                border-radius: 3px;
-                padding: 6px;
-                transition: all 0.2s ease;
-            }
-            .shortcode-item:hover {
-                background: #fff;
-                box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            }
-            .shortcode-name {
-                font-weight: bold;
-                color: #2271b1;
-                margin-bottom: 3px;
-                font-size: 12px;
-            }
-            .shortcode-code {
-                font-family: Consolas, Monaco, monospace;
-                background: #f0f0f1;
-                padding: 2px 4px;
-                border-radius: 2px;
-                font-size: 11px;
-                color: #1d2327;
-                cursor: pointer;
-                display: inline-block;
-            }
-            .shortcode-code:hover {
-                background: #e2e4e7;
-            }
-            .shortcode-example {
-                margin-top: 3px;
-                font-size: 11px;
-                color: #646970;
-            }
-            .copy-tooltip {
-                display: none;
-                position: absolute;
-                background: #1d2327;
-                color: #fff;
-                padding: 3px 6px;
-                border-radius: 2px;
-                font-size: 11px;
-                z-index: 100;
-            }
-        </style>
-
         <div class="message-template-container">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                 <!-- 左側：訊息模板編輯區 -->
@@ -498,7 +386,7 @@ class Woo_Line_Settings {
                     <div class="shortcodes-header">
                         <h3>📝 訊息模板編輯</h3>
                     </div>
-                    <textarea name='woo_line_settings[message_template]' rows='20' style='width: 100%;'><?php echo esc_textarea($template); ?></textarea>
+                    <textarea name='woo_line_settings[message_template]' rows='20'><?php echo esc_textarea($template); ?></textarea>
                     <p class="description">在模板中使用簡碼來插入訂單資料。點擊右側的簡碼可直接複製。</p>
                     <p class="description" style="color: #d63638;">注意：「購買人欄位」、「收件人欄位」、「訂單額外欄位」和「自訂欄位」需要有訂單資料後才會顯示完整的可用簡碼。</p>
                 </div>
@@ -611,10 +499,10 @@ class Woo_Line_Settings {
             <h3>🔗 Webhook URL 設定說明</h3>
             <p>請在 LINE Developers Console 中設定以下 Webhook URL：</p>
             <div class="webhook-url-container" style="position: relative;">
-                <code id="webhook-url" style="display: block; padding: 10px; background: #f0f0f1; margin: 10px 0; cursor: pointer; transition: background-color 0.2s ease;" onclick="copyWebhookUrl(this)">
+                <code id="webhook-url" onclick="copyWebhookUrl(this)">
                     <?php echo esc_url(get_rest_url(null, 'woo-line/v1/webhook')); ?>
                 </code>
-                <div id="webhook-copy-tooltip" style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: #1d2327; color: #fff; padding: 4px 8px; border-radius: 3px; font-size: 12px;">已複製！</div>
+                <div id="webhook-copy-tooltip">已複製！</div>
             </div>
             <p class="description" style="margin-top: 5px; color: #646970;">點擊上方網址可直接複製</p>
 
@@ -651,8 +539,8 @@ class Woo_Line_Settings {
             <!-- 測試功能區塊 -->
             <hr>
             <h3>🔔 測試通知</h3>
-            <div style="display: flex; gap: 10px;">
-                <form method="post" action="" style="margin-right: 10px;">
+            <div>
+                <form method="post" action="">
                     <?php wp_nonce_field('send_test_message', 'test_message_nonce'); ?>
                     <input type="submit" name="send_test_message" class="button button-secondary" value="發送簡單測試訊息">
                     <p class="description">發送一則簡單的測試訊息，確認連線是否正常。</p>

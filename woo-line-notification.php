@@ -76,3 +76,24 @@ function woo_line_add_settings_link($links) {
     return $links;
 }
 add_filter('plugin_action_links_' . plugin_basename(__FILE__), 'woo_line_add_settings_link');
+
+function woo_line_enqueue_admin_styles($hook) {
+    if ('settings_page_woo_line_settings' !== $hook) {
+         return;
+    }
+
+    $css_file_path = WOO_LINE_PLUGIN_PATH . 'assets/css/woo-line-styles.css';
+    $css_file_url = WOO_LINE_PLUGIN_URL . 'assets/css/woo-line-styles.css';
+
+    if (file_exists($css_file_path)) {
+        $version = filemtime($css_file_path);
+
+        wp_enqueue_style(
+            'woo-line-admin-styles',
+            $css_file_url,
+            array(),
+            $version
+        );
+    }
+}
+add_action('admin_enqueue_scripts', 'woo_line_enqueue_admin_styles');
