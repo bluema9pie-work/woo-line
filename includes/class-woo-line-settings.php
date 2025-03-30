@@ -288,14 +288,18 @@ class Woo_Line_Settings {
                 ),
                 '[order-product]' => array(
                     '說明' => '訂購項目',
-                    '範例' => "商品A x 2\n商品B x 1"
+                    '範例' => "商品A x 2\\n商品B x 1"
                 ),
                 '[payment-method]' => array(
                     '說明' => '付款方式',
                     '範例' => '信用卡付款'
                 ),
+                '[shipping-method]' => array(
+                    '說明' => '運送方式',
+                    '範例' => '統一費率'
+                ),
                 '[total]' => array(
-                    '說明' => '總金額',
+                    '說明' => '訂單總金額 (格式化)',
                     '範例' => '1,234'
                 ),
                 '[customer_note]' => array(

@@ -3,7 +3,7 @@
  * Plugin Name: WooCommerce LINE 訂單通知
  * Plugin URI: https://aquarius.com.tw/
  * Description: 當有新訂單時，透過 LINE Messaging API 發送通知至指定群組
- * Version: 1.1.6
+ * Version: 1.1.7
  * Author: Aquarius
  * Author URI: https://aquarius.com.tw/
  * License: GPL-3.0-or-later
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 define('WOO_LINE_PLUGIN_FILE', __FILE__);
 define('WOO_LINE_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('WOO_LINE_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('WOO_LINE_VERSION', '1.1.6');
+define('WOO_LINE_VERSION', '1.1.7');
 
 /**
  * 檢查 WooCommerce 是否啟用

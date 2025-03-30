@@ -87,6 +87,21 @@ class Woo_Line_Api {
                 }
             }
 
+            // 獲取運送方式名稱
+            $shipping_methods = $order->get_shipping_methods();
+            $shipping_method_names = [];
+            if (!empty($shipping_methods)) {
+                foreach ($shipping_methods as $shipping_method) {
+                     // 使用 get_name() 通常能獲取更簡潔的名稱，例如 "Flat rate"
+                     // 如果需要包含實例標題 (例如 "Flat rate - Domestic")，可以使用 get_method_title()
+                    $shipping_method_names[] = $shipping_method->get_name(); 
+                }
+                $shortcodes['[shipping-method]'] = implode(', ', $shipping_method_names);
+            } else {
+                 // 如果訂單沒有運送方式 (例如虛擬商品)，則給予預設值
+                 $shortcodes['[shipping-method]'] = __('無', 'woocommerce'); // 或者 'N/A', 或空字串 ''
+            }
+
             $meta_data = $order->get_meta_data();
             foreach ($meta_data as $meta) {
                 $meta_key = $meta->get_data()['key'];
