@@ -115,26 +115,22 @@ class Woo_Line_Api {
             }
 
             // 根據通知類型選擇模板
-            if ($type === 'cancelled') {
-                $template = isset($options['cancelled_message_template']) ? $options['cancelled_message_template'] : '';
-                if (empty($template)) {
-                    $template = "⚠️ 訂單已取消通知\n" .
-                        "訂單編號: [order-id]\n" .
-                        "訂購人: [billing_last_name][billing_first_name]\n" .
-                        "取消訂單項目:\n[order-product]\n" .
-                        "訂單金額: [total] 元";
-                }
-            } else {
-                $template = isset($options['message_template']) ? $options['message_template'] : '';
-                if (empty($template)) {
-                    $template = "🔔叮咚！有一筆新的訂單！\n" .
-                        "訂單編號: [order-id]\n" .
-                        "訂購時間: [order-time]\n" .
-                        "訂購人: [billing_last_name][billing_first_name]\n" .
-                        "訂購項目:\n[order-product]\n" .
-                        "付款方式: [payment-method]\n" .
-                        "總金額: [total] 元";
-                }
+            $template = '';
+            switch ($type) {
+                case 'cancelled':
+                    $template = isset($options['cancelled_message_template']) ? $options['cancelled_message_template'] : '';
+                    if (empty($template)) {
+                        $template = self::get_default_cancelled_message_template(); // 使用輔助函數取得預設模板
+                    }
+                    break;
+                case 'new_order':
+                case 'test_latest_order': // 測試最新訂單也使用新訂單模板
+                default:
+                    $template = isset($options['message_template']) ? $options['message_template'] : '';
+                    if (empty($template)) {
+                        $template = self::get_default_message_template(); // 使用輔助函數取得預設模板
+                    }
+                    break;
             }
 
             // 替換簡碼並清理空值簡碼和多餘換行
@@ -204,6 +200,26 @@ class Woo_Line_Api {
                 throw $e;
             }
         }
+    }
+
+    // 新增：取得預設的新訂單模板
+    private static function get_default_message_template() {
+        return "🔔叮咚！有一筆新的訂單！\n" .
+            "訂單編號: [order-id]\n" .
+            "訂購時間: [order-time]\n" .
+            "訂購人: [billing_last_name][billing_first_name]\n" .
+            "訂購項目:\n[order-product]\n" .
+            "付款方式: [payment-method]\n" .
+            "總金額: [total] 元";
+    }
+
+    // 新增：取得預設的取消訂單模板
+    private static function get_default_cancelled_message_template() {
+        return "⚠️ 訂單已取消通知\n" .
+            "訂單編號: [order-id]\n" .
+            "訂購人: [billing_last_name][billing_first_name]\n" .
+            "取消訂單項目:\n[order-product]\n" .
+            "訂單金額: [total] 元";
     }
 
     /**

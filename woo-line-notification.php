@@ -3,7 +3,7 @@
  * Plugin Name: WooCommerce LINE 訂單通知
  * Plugin URI: https://aquarius.com.tw/
  * Description: 當有新訂單時，透過 LINE Messaging API 發送通知至指定群組
- * Version: 1.1.7
+ * Version: 1.2.0
  * Author: Aquarius
  * Author URI: https://aquarius.com.tw/
  * License: GPL-3.0-or-later
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 define('WOO_LINE_PLUGIN_FILE', __FILE__);
 define('WOO_LINE_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('WOO_LINE_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('WOO_LINE_VERSION', '1.1.7');
+define('WOO_LINE_VERSION', '1.2.0');
 
 /**
  * 檢查 WooCommerce 是否啟用
@@ -112,7 +112,6 @@ function woo_line_enqueue_admin_assets($hook) {
         );
     }
 
-    // 載入 JavaScript
     $js_file_path = WOO_LINE_PLUGIN_PATH . 'assets/js/woo-line-admin.js';
     $js_file_url = WOO_LINE_PLUGIN_URL . 'assets/js/woo-line-admin.js';
     if (file_exists($js_file_path)) {
@@ -120,12 +119,11 @@ function woo_line_enqueue_admin_assets($hook) {
         wp_enqueue_script(
             'woo-line-admin-script',
             $js_file_url,
-            array('jquery'), // 可根據需要加入依賴，此處暫不加 jquery
+            array('jquery'), 
             $js_version,
-            true // 在頁尾載入
+            true 
         );
 
-        // 將 PHP 資料 (包含翻譯字串) 傳遞給 JavaScript
         wp_localize_script('woo-line-admin-script', 'wooLineAdminData', array(
             'l10n' => array(
                 'confirmClearGroupId' => __('您確定要清除已選擇的 LINE 群組 ID 嗎？這將使下拉選單恢復預設值，並在儲存設定後生效。', 'woo-line-notification'),

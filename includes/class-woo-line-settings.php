@@ -60,7 +60,7 @@ class Woo_Line_Settings {
                 'title' => 'LINE 群組 ID',
                 'callback' => array($this, 'group_id_render')
             ),
-            'notification_triggers' => array(
+            'trigger_options' => array(
                 'title' => '通知觸發條件',
                 'callback' => array($this, 'notification_triggers_render')
             ),
@@ -157,21 +157,34 @@ class Woo_Line_Settings {
     }
 
     public function notification_triggers_render() {
-        $triggers = isset($this->options['notification_triggers']) ? $this->options['notification_triggers'] : array('new_order');
+        $trigger_event = isset($this->options['trigger_event']) ? $this->options['trigger_event'] : 'new_order';
+        $notify_on_cancel = isset($this->options['notify_on_cancel']) && $this->options['notify_on_cancel'] === 'yes';
         ?>
-        <div>
-            <label>
-                <input type="checkbox" name="woo_line_settings[notification_triggers][]" value="new_order"
-                    <?php checked(in_array('new_order', $triggers)); ?>>
-                新訂單建立時發送通知
-            </label>
-            <label>
-                <input type="checkbox" name="woo_line_settings[notification_triggers][]" value="order_cancelled"
-                    <?php checked(in_array('order_cancelled', $triggers)); ?>>
-                訂單取消時發送通知
-            </label>
+        <div class="woo-line-trigger-options-wrapper">
+            <fieldset>
+                <legend class="screen-reader-text"><span>主要通知觸發點 (擇一)</span></legend>
+                 <label style="display: block; margin-bottom: 5px;">
+                    <input type="radio" name="woo_line_settings[trigger_event]" value="new_order"
+                        <?php checked($trigger_event, 'new_order'); ?>>
+                    任何新訂單建立時發送通知 (標準)
+                </label>
+                <label style="display: block; margin-bottom: 15px;">
+                    <input type="radio" name="woo_line_settings[trigger_event]" value="order_processing"
+                        <?php checked($trigger_event, 'order_processing'); ?>>
+                     訂單狀態變更為「處理中」時才發送通知 (適用於需要付款確認的流程)
+                </label>
+            </fieldset>
+             <fieldset style="margin-top: 15px;">
+                 <legend class="screen-reader-text"><span>其他觸發條件</span></legend>
+                 <label>
+                    <input type="hidden" name="woo_line_settings[notify_on_cancel]" value="no">
+                     <input type="checkbox" name="woo_line_settings[notify_on_cancel]" value="yes"
+                         <?php checked($notify_on_cancel, true); ?>>
+                     訂單取消時發送通知
+                 </label>
+             </fieldset>
+            <p class="description">選擇主要的新訂單相關通知時機 (兩者擇一)，以及是否在訂單取消時也發送通知。</p>
         </div>
-        <p class="description">選擇要在哪些情況下發送 LINE 通知</p>
         <?php
     }
 
@@ -237,22 +250,32 @@ class Woo_Line_Settings {
             $new_input['group_id'] = '';
         }
         
-        if (isset($input['notification_triggers']) && is_array($input['notification_triggers'])) {
-            $new_input['notification_triggers'] = array_map('sanitize_text_field', $input['notification_triggers']);
+        if (isset($input['trigger_event']) && in_array($input['trigger_event'], ['new_order', 'order_processing'])) {
+            $new_input['trigger_event'] = sanitize_key($input['trigger_event']);
         } else {
-            $new_input['notification_triggers'] = array();
+            $new_input['trigger_event'] = 'new_order';
         }
 
+        $new_input['notify_on_cancel'] = isset($input['notify_on_cancel']) && $input['notify_on_cancel'] === 'yes' ? 'yes' : 'no';
+
         if (isset($input['message_template'])) {
-            $new_input['message_template'] = sanitize_textarea_field($input['message_template']);
+            if (empty(trim($input['message_template']))) {
+                 $new_input['message_template'] = $this->get_default_message_template();
+            } else {
+                 $new_input['message_template'] = sanitize_textarea_field($input['message_template']);
+            }
         } else {
              $new_input['message_template'] = $this->get_default_message_template();
         }
-
+        
         if (isset($input['cancelled_message_template'])) {
-             $new_input['cancelled_message_template'] = sanitize_textarea_field($input['cancelled_message_template']);
+            if (empty(trim($input['cancelled_message_template']))) {
+                 $new_input['cancelled_message_template'] = $this->get_default_cancelled_message_template();
+             } else {
+                $new_input['cancelled_message_template'] = sanitize_textarea_field($input['cancelled_message_template']);
+             }
         } else {
-             $new_input['cancelled_message_template'] = $this->get_default_cancelled_message_template();
+              $new_input['cancelled_message_template'] = $this->get_default_cancelled_message_template();
         }
         
         $new_input['enable_logging'] = (isset($input['enable_logging']) && $input['enable_logging'] === 'yes') ? 'yes' : 'no';
@@ -261,11 +284,11 @@ class Woo_Line_Settings {
     }
     
     private function get_default_message_template() {
-        return "🔔 您有新訂單！\\n訂單編號: [order-id]\\n訂購時間: [order-time]\\n訂購人: [order-name]\\n訂購項目:\\n[order-product]\\n付款方式: [payment-method]\\n總金額: [total] 元\\n訂單備註: [customer_note]";
+        return "🔔 您有新訂單！\n訂單編號: [order-id]\n訂購時間: [order-time]\n訂購人: [order-name]\n訂購項目:\n[order-product]\n付款方式: [payment-method]\n總金額: [total] 元\n訂單備註: [customer_note]";
     }
     
     private function get_default_cancelled_message_template() {
-        return "⚠️ 訂單已取消通知\\n訂單編號: [order-id]\\n訂購人: [billing_last_name][billing_first_name]\\n取消訂單項目:\\n[order-product]\\n訂單金額: [total] 元";
+        return "⚠️ 訂單已取消通知！\n訂單編號: [order-id]\n訂購人: [billing_last_name][billing_first_name]\n取消訂單項目:\n[order-product]\n訂單金額: [total] 元";
     }
 
     /**
@@ -413,13 +436,7 @@ class Woo_Line_Settings {
      * 渲染訊息模板編輯器 (包含簡碼列表)
      */
     public function message_template_render() {
-        $default_template = "🔔叮咚！有一筆新的訂單！\n" .
-            "訂單編號: [order-id]\n" .
-            "訂購時間: [order-time]\n" .
-            "訂購人: [billing_last_name][billing_first_name]\n" .
-            "訂購項目:\n[order-product]\n" .
-            "付款方式: [payment-method]\n" .
-            "總金額: [total] 元";
+        $default_template = $this->get_default_message_template();
         
         $template = isset($this->options['message_template']) ? $this->options['message_template'] : $default_template;
         ?>
@@ -533,7 +550,7 @@ class Woo_Line_Settings {
 
             <hr>
             <h3>🔔 測試通知</h3>
-            <div>
+            <div class="woo-line-test-buttons-container">
                 <form method="post" action="">
                     <?php wp_nonce_field('send_test_message', 'test_message_nonce'); ?>
                     <input type="submit" name="send_test_message" class="button button-secondary" value="發送簡單測試訊息">

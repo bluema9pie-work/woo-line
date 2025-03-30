@@ -138,21 +138,27 @@ textarea[name='woo_line_settings[cancelled_message_template]'] {
 }
 
 /* Test Buttons Section */
-.wrap > h3 + ol + hr + h3 + div {
+.woo-line-test-buttons-container {
     display: flex;
     gap: 10px;
 }
-.wrap > h3 + ol + hr + h3 + div form {
+.woo-line-test-buttons-container form {
     margin-right: 10px;
 }
 
 /* Notification Triggers Section */
-tr[id^="tr_notification_triggers"] > td > div {
+.woo-line-trigger-options-wrapper {
     margin-bottom: 10px;
 }
-tr[id^="tr_notification_triggers"] > td > div label {
+.woo-line-trigger-options-wrapper fieldset + fieldset {
+    margin-top: 15px;
+}
+.woo-line-trigger-options-wrapper label {
     display: block;
 }
-tr[id^="tr_notification_triggers"] > td > div label:first-of-type {
-    margin-bottom: 5px;
+.woo-line-trigger-options-wrapper fieldset:first-of-type label:last-of-type {
+    margin-bottom: 15px;
+}
+.woo-line-trigger-options-wrapper fieldset:last-of-type label {
+    /* Remove or adjust specific margins if needed, they are handled by fieldset spacing now */
 } 
