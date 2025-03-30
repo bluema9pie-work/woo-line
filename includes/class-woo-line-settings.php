@@ -34,7 +34,11 @@ class Woo_Line_Settings {
      * 初始化外掛設定欄位和區段
      */
     public function settings_init() {
-        register_setting('woo_line_settings', 'woo_line_settings');
+        register_setting(
+            'woo_line_settings', 
+            'woo_line_settings',
+            array('sanitize_callback' => array($this, 'sanitize_settings'))
+        );
 
         add_settings_section(
             'woo_line_settings_section',
@@ -127,22 +131,54 @@ class Woo_Line_Settings {
 
     public function group_id_render() {
         $groups = get_option('woo_line_groups', array());
+        $current_group_id = isset($this->options['group_id']) ? $this->options['group_id'] : '';
         ?>
-        <select name='woo_line_settings[group_id]'>
-            <option value=''>請選擇群組</option>
+        <select name='woo_line_settings[group_id]' id='woo_line_group_id_select'>
+            <option value=''><?php _e('請選擇群組', 'woo-line-notification'); ?></option>
             <?php foreach ($groups as $group_id => $group_name): ?>
-                <option value='<?php echo esc_attr($group_id); ?>' <?php selected(isset($this->options['group_id']) ? $this->options['group_id'] : '', $group_id); ?>>
+                <option value='<?php echo esc_attr($group_id); ?>' <?php selected($current_group_id, $group_id); ?>>
                     <?php echo esc_html($group_name); ?> (<?php echo esc_html($group_id); ?>)
                 </option>
             <?php endforeach; ?>
         </select>
-        <p class="description">當 Bot 被加入群組時，群組會自動出現在這裡。如果沒有看到群組，請確保：</p>
+        <button type="button" id="clear_group_id_button" class="button" style="margin-left: 10px;" <?php disabled(empty($current_group_id)); ?>>
+            <?php _e('清除選擇', 'woo-line-notification'); ?>
+        </button>
+        <input type="hidden" name="woo_line_settings[clear_group_id]" id="clear_group_id_flag" value="0">
+
+        <p class="description"><?php _e('當 Bot 被加入群組時，群組會自動出現在這裡。如果沒有看到群組，請確保：', 'woo-line-notification'); ?></p>
         <ol>
-            <li>已設定好 Channel Secret</li>
-            <li>已在 LINE Developers 設定 Webhook URL</li>
-            <li>已將 Bot 加入目標群組</li>
-            <li>在群組中發送一則訊息</li>
+            <li><?php _e('已設定好 Channel Secret', 'woo-line-notification'); ?></li>
+            <li><?php _e('已在 LINE Developers 設定 Webhook URL', 'woo-line-notification'); ?></li>
+            <li><?php _e('已將 Bot 加入目標群組', 'woo-line-notification'); ?></li>
+            <li><?php _e('在群組中發送一則訊息', 'woo-line-notification'); ?></li>
         </ol>
+        <script type="text/javascript">
+            document.addEventListener('DOMContentLoaded', function() {
+                var clearButton = document.getElementById('clear_group_id_button');
+                var selectElement = document.getElementById('woo_line_group_id_select');
+                var clearFlagInput = document.getElementById('clear_group_id_flag');
+
+                if (clearButton && selectElement && clearFlagInput) {
+                    clearButton.addEventListener('click', function(e) {
+                        if (confirm('<?php echo esc_js(__('您確定要清除已選擇的 LINE 群組 ID 嗎？這將使下拉選單恢復預設值，並在儲存設定後生效。', 'woo-line-notification')); ?>')) {
+                            selectElement.value = ''; 
+                            clearFlagInput.value = '1'; 
+                            this.disabled = true;
+                            alert('<?php echo esc_js(__('群組選擇已清除。請點擊「儲存設定」按鈕以完成操作。', 'woo-line-notification')); ?>');
+                        }
+                    });
+
+                    selectElement.addEventListener('change', function() {
+                        var shouldDisableButton = (this.value === '');
+                        clearButton.disabled = shouldDisableButton;
+                        if (this.value !== '') {
+                            clearFlagInput.value = '0';
+                        }
+                    });
+                }
+            });
+        </script>
         <?php
     }
 
@@ -193,6 +229,69 @@ class Woo_Line_Settings {
         <label for="enable_logging">啟用記錄功能</label>
         <p class="description">勾選後，外掛執行時的錯誤和詳細資訊將會被記錄到伺服器的錯誤記錄檔中。請只在除錯時啟用。</p>
         <?php
+    }
+
+    /**
+     * 清理和驗證設定選項
+     * @param array $input 使用者提交的設定值
+     * @return array 清理過的設定值
+     */
+    public function sanitize_settings($input) {
+        $new_input = array();
+
+        $clear_group_id = isset($_POST['woo_line_settings']['clear_group_id']) ? $_POST['woo_line_settings']['clear_group_id'] : '0';
+        
+        if (isset($input['channel_access_token']) && !defined('WOO_LINE_CHANNEL_ACCESS_TOKEN')) {
+            $new_input['channel_access_token'] = sanitize_text_field($input['channel_access_token']);
+        } else {
+            $existing_options = get_option('woo_line_settings');
+            $new_input['channel_access_token'] = isset($existing_options['channel_access_token']) ? $existing_options['channel_access_token'] : '';
+        }
+
+        if (isset($input['channel_secret']) && !defined('WOO_LINE_CHANNEL_SECRET')) {
+             $new_input['channel_secret'] = sanitize_text_field($input['channel_secret']);
+        } else {
+            $existing_options = get_option('woo_line_settings');
+             $new_input['channel_secret'] = isset($existing_options['channel_secret']) ? $existing_options['channel_secret'] : '';
+        }
+
+        if ($clear_group_id === '1') {
+            $new_input['group_id'] = ''; 
+        } elseif (isset($input['group_id'])) {
+             $new_input['group_id'] = sanitize_text_field($input['group_id']);
+        } else {
+            $new_input['group_id'] = '';
+        }
+        
+        if (isset($input['notification_triggers']) && is_array($input['notification_triggers'])) {
+            $new_input['notification_triggers'] = array_map('sanitize_text_field', $input['notification_triggers']);
+        } else {
+            $new_input['notification_triggers'] = array();
+        }
+
+        if (isset($input['message_template'])) {
+            $new_input['message_template'] = sanitize_textarea_field($input['message_template']);
+        } else {
+             $new_input['message_template'] = $this->get_default_message_template();
+        }
+
+        if (isset($input['cancelled_message_template'])) {
+             $new_input['cancelled_message_template'] = sanitize_textarea_field($input['cancelled_message_template']);
+        } else {
+             $new_input['cancelled_message_template'] = $this->get_default_cancelled_message_template();
+        }
+        
+        $new_input['enable_logging'] = (isset($input['enable_logging']) && $input['enable_logging'] === 'yes') ? 'yes' : 'no';
+
+        return $new_input;
+    }
+    
+    private function get_default_message_template() {
+        return "🔔 您有新訂單！\\n訂單編號: [order-id]\\n訂購時間: [order-time]\\n訂購人: [order-name]\\n訂購項目:\\n[order-product]\\n付款方式: [payment-method]\\n總金額: [total] 元\\n訂單備註: [customer_note]";
+    }
+    
+    private function get_default_cancelled_message_template() {
+        return "⚠️ 訂單已取消通知\\n訂單編號: [order-id]\\n訂購人: [billing_last_name][billing_first_name]\\n取消訂單項目:\\n[order-product]\\n訂單金額: [total] 元";
     }
 
     /**
@@ -430,6 +529,15 @@ class Woo_Line_Settings {
      * 渲染設定頁面整體結構
      */
     public function options_page() {
+        // 處理清除已儲存群組列表的請求
+        if (isset($_POST['clear_stored_groups']) && check_admin_referer('clear_stored_groups_action', 'clear_groups_nonce')) {
+            if (delete_option('woo_line_groups')) {
+                $this->display_admin_notice('success', __('已成功清除所有已儲存的群組列表紀錄。', 'woo-line-notification'));
+            } else {
+                $this->display_admin_notice('error', __('清除已儲存的群組列表紀錄時發生錯誤，或目前沒有儲存任何群組。', 'woo-line-notification'));
+            }
+        }
+        
         // 處理測試訊息發送
         if (isset($_POST['send_test_message']) && check_admin_referer('send_test_message', 'test_message_nonce')) {
             $test_result = Woo_Line_Api::send_test_message();
@@ -507,6 +615,17 @@ class Woo_Line_Settings {
                     <p class="description">使用最新一筆訂單資料發送測試訊息，測試完整通知格式。</p>
                 </form>
             </div>
+
+            <hr> 
+            <h3>⚙️ 維護工具</h3>
+            <div>
+                 <form method="post" action="" onsubmit="return confirm('<?php echo esc_js(__('您確定要清除所有過去儲存的群組列表嗎？此操作無法復原，下拉選單將會被清空，需要重新讓 Bot 加入群組並發送訊息才會再次出現。', 'woo-line-notification')); ?>');">
+                    <?php wp_nonce_field('clear_stored_groups_action', 'clear_groups_nonce'); ?>
+                    <input type="submit" name="clear_stored_groups" class="button button-warning" value="清除已儲存群組列表">
+                    <p class="description">如果您遇到群組列表顯示錯誤或需要重置，可以使用此按鈕清除所有外掛自動儲存的群組紀錄。</p>
+                </form>
+            </div>
+
         </div>
         <?php
     }
