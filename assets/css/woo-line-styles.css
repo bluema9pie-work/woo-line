@@ -158,7 +158,4 @@ textarea[name='woo_line_settings[cancelled_message_template]'] {
 }
 .woo-line-trigger-options-wrapper fieldset:first-of-type label:last-of-type {
     margin-bottom: 15px;
-}
-.woo-line-trigger-options-wrapper fieldset:last-of-type label {
-    /* Remove or adjust specific margins if needed, they are handled by fieldset spacing now */
 } 

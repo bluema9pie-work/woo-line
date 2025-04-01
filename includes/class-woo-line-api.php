@@ -70,7 +70,8 @@ class Woo_Line_Api {
                 '[order-product]' => $products_text,
                 '[payment-method]' => $order->get_payment_method_title(),
                 '[total]' => number_format($order->get_total(), 0),
-                '[customer_note]' => $order->get_customer_note() ?: ''
+                '[customer_note]' => $order->get_customer_note() ?: '',
+                '[order-admin-link]' => admin_url('admin.php?page=wc-orders&action=edit&id=' . $order_id)
             );
 
             $billing_data = $order->get_data()['billing'];
@@ -92,8 +93,6 @@ class Woo_Line_Api {
             $shipping_method_names = [];
             if (!empty($shipping_methods)) {
                 foreach ($shipping_methods as $shipping_method) {
-                     // 使用 get_name() 通常能獲取更簡潔的名稱，例如 "Flat rate"
-                     // 如果需要包含實例標題 (例如 "Flat rate - Domestic")，可以使用 get_method_title()
                     $shipping_method_names[] = $shipping_method->get_name(); 
                 }
                 $shortcodes['[shipping-method]'] = implode(', ', $shipping_method_names);
@@ -120,15 +119,15 @@ class Woo_Line_Api {
                 case 'cancelled':
                     $template = isset($options['cancelled_message_template']) ? $options['cancelled_message_template'] : '';
                     if (empty($template)) {
-                        $template = self::get_default_cancelled_message_template(); // 使用輔助函數取得預設模板
+                        $template = self::get_default_cancelled_message_template(); 
                     }
                     break;
                 case 'new_order':
-                case 'test_latest_order': // 測試最新訂單也使用新訂單模板
+                case 'test_latest_order':
                 default:
                     $template = isset($options['message_template']) ? $options['message_template'] : '';
                     if (empty($template)) {
-                        $template = self::get_default_message_template(); // 使用輔助函數取得預設模板
+                        $template = self::get_default_message_template(); 
                     }
                     break;
             }

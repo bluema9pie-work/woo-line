@@ -328,6 +328,10 @@ class Woo_Line_Settings {
                 '[customer_note]' => array(
                     '說明' => '訂單備註',
                     '範例' => '請於12點前送達'
+                ),
+                '[order-admin-link]' => array(
+                    '說明' => '訂單後台管理連結',
+                    '範例' => '無'
                 )
             )
         );
